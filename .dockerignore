@@ -45,3 +45,5 @@ README.md
 
 # Environment file
 .env.example
+
+credentials/enccpdo1_rsa.private

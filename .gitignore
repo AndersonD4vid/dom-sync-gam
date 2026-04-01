@@ -37,3 +37,5 @@ Thumbs.db
 # Distribution
 *.tar.gz
 *.whl
+
+credentials/enccpdo1_rsa.private

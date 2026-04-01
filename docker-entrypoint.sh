@@ -2,10 +2,9 @@
 set -euo pipefail
 
 echo "[entrypoint] Starting Redis in background..."
-redis-server /etc/redis/redis-container.conf &
+redis-server /app/redis.conf &
 REDIS_PID=$!
 
-# Wait for Redis to be ready (max 15 seconds)
 RETRIES=0
 MAX_RETRIES=15
 until redis-cli -h 127.0.0.1 ping 2>/dev/null | grep -q PONG; do
@@ -20,7 +19,6 @@ done
 
 echo "[entrypoint] Redis is ready (PID: ${REDIS_PID})"
 
-# Trap signals to clean up Redis on container stop
 cleanup() {
     echo "[entrypoint] Shutting down Redis..."
     redis-cli -h 127.0.0.1 shutdown nosave 2>/dev/null || true

@@ -57,15 +57,15 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 RUN mkdir -p /var/run/redis /var/log/redis /data && \
     chown -R appuser:appuser /var/run/redis /var/log/redis /data /app
 
-# Configure Redis to run without privileges and bind to localhost only
-RUN echo "bind 127.0.0.1" > /etc/redis/redis-container.conf && \
-    echo "port 6379" >> /etc/redis/redis-container.conf && \
-    echo "daemonize no" >> /etc/redis/redis-container.conf && \
-    echo "dir /data" >> /etc/redis/redis-container.conf && \
-    echo "logfile /var/log/redis/redis.log" >> /etc/redis/redis-container.conf && \
-    echo "save \"\"" >> /etc/redis/redis-container.conf && \
-    echo "appendonly no" >> /etc/redis/redis-container.conf && \
-    chown appuser:appuser /etc/redis/redis-container.conf
+# Configure Redis in app dir (appuser has full access)
+RUN echo "bind 127.0.0.1" > /app/redis.conf && \
+    echo "port 6379" >> /app/redis.conf && \
+    echo "daemonize no" >> /app/redis.conf && \
+    echo "dir /data" >> /app/redis.conf && \
+    echo "logfile /var/log/redis/redis.log" >> /app/redis.conf && \
+    echo "save \"\"" >> /app/redis.conf && \
+    echo "appendonly no" >> /app/redis.conf && \
+    chown appuser:appuser /app/redis.conf
 
 USER appuser
 

@@ -70,7 +70,7 @@ class RevenueUtmRepository(BaseRepository):
 
                 update_data = data.copy()
                 update_data['updated_at'] = datetime.utcnow()
-                update_data.setdefault('created_at', datetime.utcnow())
+                update_data.pop('created_at', None)
 
                 bulk_operations.append(
                     UpdateOne(

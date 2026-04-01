@@ -1,3 +1,5 @@
+# Teste
+
 # DOM - Data Orchestrator for Metrics
 
 Pipeline de sincronizacao de metricas do **Google Ad Manager (GAM)** para MongoDB. Extrai relatorios de receita por dominio e UTM campaign via SOAP API, processa as metricas e persiste em bulk no MongoDB.
@@ -6,13 +8,13 @@ Pipeline de sincronizacao de metricas do **Google Ad Manager (GAM)** para MongoD
 
 O projeto segue uma arquitetura em camadas com os seguintes design patterns:
 
-| Pattern | Onde | Proposito |
-|---------|------|-----------|
-| **Repository** | `repositories/` | Abstrai acesso ao MongoDB com QueryBuilder fluent |
-| **Service Layer** | `services/` | Logica de negocio (extracao, processamento, orquestracao) |
-| **DTO** | `DTO/` | Transporte de dados tipado entre camadas |
-| **Singleton** | `ConfigSingleton`, `MongoDB`, `NetworkRateLimiter` | Instancia unica para config, conexao e rate limiter |
-| **Worker Pool** | `core/multiprocess/` | ThreadPoolExecutor com job manager por network |
+| Pattern           | Onde                                               | Proposito                                                 |
+| ----------------- | -------------------------------------------------- | --------------------------------------------------------- |
+| **Repository**    | `repositories/`                                    | Abstrai acesso ao MongoDB com QueryBuilder fluent         |
+| **Service Layer** | `services/`                                        | Logica de negocio (extracao, processamento, orquestracao) |
+| **DTO**           | `DTO/`                                             | Transporte de dados tipado entre camadas                  |
+| **Singleton**     | `ConfigSingleton`, `MongoDB`, `NetworkRateLimiter` | Instancia unica para config, conexao e rate limiter       |
+| **Worker Pool**   | `core/multiprocess/`                               | ThreadPoolExecutor com job manager por network            |
 
 ### Fluxo do Pipeline
 
@@ -91,18 +93,18 @@ Copie `.env.example` para `.env` e configure:
 cp .env.example .env
 ```
 
-| Variavel | Descricao | Default |
-|----------|-----------|---------|
-| `GAM_KEY_FILE` | Caminho para o JSON da service account Google | - |
-| `MONGO_HOST` | Host do cluster MongoDB (SRV) | `localhost` |
-| `MONGO_PORT` | Porta MongoDB | `27017` |
-| `MONGO_DB` | Nome do banco | `admanager` |
-| `MONGO_USER` | Usuario MongoDB | `joinads` |
-| `MONGO_PASSWORD` | Senha MongoDB | `joinads` |
-| `REDIS_HOST` | Host Redis | `localhost` |
-| `REDIS_PORT` | Porta Redis | `6379` |
-| `REDIS_DB` | DB Redis | `0` |
-| `REDIS_PASSWORD` | Senha Redis | - |
+| Variavel         | Descricao                                     | Default     |
+| ---------------- | --------------------------------------------- | ----------- |
+| `GAM_KEY_FILE`   | Caminho para o JSON da service account Google | -           |
+| `MONGO_HOST`     | Host do cluster MongoDB (SRV)                 | `localhost` |
+| `MONGO_PORT`     | Porta MongoDB                                 | `27017`     |
+| `MONGO_DB`       | Nome do banco                                 | `admanager` |
+| `MONGO_USER`     | Usuario MongoDB                               | `joinads`   |
+| `MONGO_PASSWORD` | Senha MongoDB                                 | `joinads`   |
+| `REDIS_HOST`     | Host Redis                                    | `localhost` |
+| `REDIS_PORT`     | Porta Redis                                   | `6379`      |
+| `REDIS_DB`       | DB Redis                                      | `0`         |
+| `REDIS_PASSWORD` | Senha Redis                                   | -           |
 
 ### 3. Credenciais Google Ad Manager
 
@@ -123,11 +125,11 @@ NETWORKS = [
 ]
 ```
 
-| Campo | Tipo | Descricao |
-|-------|------|-----------|
-| `network_code` | `str` | Codigo da network no GAM |
-| `name` | `str` | Nome descritivo |
-| `enabled` | `bool` | Se `False`, a network e ignorada pelo pipeline |
+| Campo          | Tipo   | Descricao                                      |
+| -------------- | ------ | ---------------------------------------------- |
+| `network_code` | `str`  | Codigo da network no GAM                       |
+| `name`         | `str`  | Nome descritivo                                |
+| `enabled`      | `bool` | Se `False`, a network e ignorada pelo pipeline |
 
 Funcoes disponiveis:
 
@@ -140,18 +142,18 @@ Funcoes disponiveis:
 
 Armazena metricas agregadas por dominio.
 
-| Campo | Tipo | Descricao |
-|-------|------|-----------|
-| `domain` | `string` | Nome do ad unit (dominio) |
-| `network` | `string` | Codigo da network GAM |
-| `date` | `string` | Data do relatorio |
-| `impressions` | `int` | Impressoes total + adx |
-| `clicks` | `int` | Cliques total + adx |
-| `ctr` | `float` | CTR calculado (%) |
-| `ecpm` | `float` | eCPM calculado (USD) |
-| `revenue` | `float` | Receita total + adx (USD) |
-| `created_at` | `datetime` | Timestamp de criacao |
-| `updated_at` | `datetime` | Timestamp de atualizacao |
+| Campo         | Tipo       | Descricao                 |
+| ------------- | ---------- | ------------------------- |
+| `domain`      | `string`   | Nome do ad unit (dominio) |
+| `network`     | `string`   | Codigo da network GAM     |
+| `date`        | `string`   | Data do relatorio         |
+| `impressions` | `int`      | Impressoes total + adx    |
+| `clicks`      | `int`      | Cliques total + adx       |
+| `ctr`         | `float`    | CTR calculado (%)         |
+| `ecpm`        | `float`    | eCPM calculado (USD)      |
+| `revenue`     | `float`    | Receita total + adx (USD) |
+| `created_at`  | `datetime` | Timestamp de criacao      |
+| `updated_at`  | `datetime` | Timestamp de atualizacao  |
 
 **Indice unico:** `(domain, network, date)`
 
@@ -159,19 +161,19 @@ Armazena metricas agregadas por dominio.
 
 Armazena metricas agregadas por UTM campaign.
 
-| Campo | Tipo | Descricao |
-|-------|------|-----------|
-| `domain` | `string` | Nome do ad unit (dominio) |
-| `network` | `string` | Codigo da network GAM |
-| `utm_campaign` | `string` | Valor do key-value `utm_campaign` |
-| `date` | `string` | Data do relatorio |
-| `impressions` | `int` | Impressoes total + adx |
-| `clicks` | `int` | Cliques total + adx |
-| `ctr` | `float` | CTR calculado (%) |
-| `ecpm` | `float` | eCPM calculado (USD) |
-| `revenue` | `float` | Receita total + adx (USD) |
-| `created_at` | `datetime` | Timestamp de criacao |
-| `updated_at` | `datetime` | Timestamp de atualizacao |
+| Campo          | Tipo       | Descricao                         |
+| -------------- | ---------- | --------------------------------- |
+| `domain`       | `string`   | Nome do ad unit (dominio)         |
+| `network`      | `string`   | Codigo da network GAM             |
+| `utm_campaign` | `string`   | Valor do key-value `utm_campaign` |
+| `date`         | `string`   | Data do relatorio                 |
+| `impressions`  | `int`      | Impressoes total + adx            |
+| `clicks`       | `int`      | Cliques total + adx               |
+| `ctr`          | `float`    | CTR calculado (%)                 |
+| `ecpm`         | `float`    | eCPM calculado (USD)              |
+| `revenue`      | `float`    | Receita total + adx (USD)         |
+| `created_at`   | `datetime` | Timestamp de criacao              |
+| `updated_at`   | `datetime` | Timestamp de atualizacao          |
 
 **Indice unico:** `(domain, network, utm_campaign, date)`
 
@@ -181,25 +183,25 @@ Ambas as collections usam **upsert** -- se o documento ja existe (pela chave uni
 
 ### Flags
 
-| Flag | Tipo | Default | Descricao |
-|------|------|---------|-----------|
-| `--type` | `domain` \| `utm_campaign` | - | Tipo de relatorio |
-| `--day` | `string` | - | Periodo do relatorio |
-| `--run` | flag | `False` | Executa o processamento (sem flag = modo listagem) |
-| `--workers` | `int` | `cpu_count()` | Numero de threads concorrentes |
-| `--limit` | `int` | - | Limita quantidade de networks processadas |
-| `--network` | `string` | - | Processa apenas uma network especifica |
-| `--debug` | flag | `False` | Logging em modo debug |
+| Flag        | Tipo                       | Default       | Descricao                                          |
+| ----------- | -------------------------- | ------------- | -------------------------------------------------- |
+| `--type`    | `domain` \| `utm_campaign` | -             | Tipo de relatorio                                  |
+| `--day`     | `string`                   | -             | Periodo do relatorio                               |
+| `--run`     | flag                       | `False`       | Executa o processamento (sem flag = modo listagem) |
+| `--workers` | `int`                      | `cpu_count()` | Numero de threads concorrentes                     |
+| `--limit`   | `int`                      | -             | Limita quantidade de networks processadas          |
+| `--network` | `string`                   | -             | Processa apenas uma network especifica             |
+| `--debug`   | flag                       | `False`       | Logging em modo debug                              |
 
 ### Valores de `--day`
 
-| Valor | Periodo |
-|-------|---------|
-| `today` | Dia atual |
-| `yesterday` | Dia anterior |
-| `last_7_days` | Ultimos 7 dias |
-| `last_30_days` | Ultimos 30 dias |
-| `last_X_days` | Ultimos X dias (dinamico, ex: `last_90_days`) |
+| Valor          | Periodo                                       |
+| -------------- | --------------------------------------------- |
+| `today`        | Dia atual                                     |
+| `yesterday`    | Dia anterior                                  |
+| `last_7_days`  | Ultimos 7 dias                                |
+| `last_30_days` | Ultimos 30 dias                               |
+| `last_X_days`  | Ultimos X dias (dinamico, ex: `last_90_days`) |
 
 ### Exemplos
 
@@ -273,13 +275,13 @@ O sistema implementa rate limiting em duas camadas:
 
 Quando a API retorna HTTP 429 ou `Resource has been exhausted`:
 
-| Parametro | Valor |
-|-----------|-------|
-| Max retries | 10 |
-| Delay inicial | 10 segundos |
-| Delay maximo | 120 segundos |
-| Fator de crescimento | 2x (exponencial) |
-| Jitter | 20% (evita thundering herd) |
+| Parametro            | Valor                       |
+| -------------------- | --------------------------- |
+| Max retries          | 10                          |
+| Delay inicial        | 10 segundos                 |
+| Delay maximo         | 120 segundos                |
+| Fator de crescimento | 2x (exponencial)            |
+| Jitter               | 20% (evita thundering herd) |
 
 Formula do delay: `min(initial_delay * 2^attempt, max_delay) * (1 + 0.2 * jitter)`
 
@@ -293,26 +295,26 @@ Garante que **apenas 1 worker processa uma network por vez**. Isso evita requisi
 
 ## Error Handling
 
-| Tipo de Erro | Tratamento | Status |
-|-------------|------------|--------|
-| `AuthenticationError.NO_NETWORKS_TO_ACCESS` | Retorna `False`, pula network | `auth_error` |
-| `Unauthorized` / `PermissionDenied` | Captura no worker, registra no dashboard | `auth_error` |
-| HTTP 429 / Rate limit | Exponential backoff com ate 10 retries | `rate_limit` (se esgotado) |
-| Erro SOAP generico | Retry no `_report_service` (5 tentativas, delay 1s) | `error` |
-| Erro de bulk write | Logado, chunk inteiro contado como erro | `error` |
-| `KeyboardInterrupt` | Encerra graciosamente com `sys.exit(1)` | - |
-| Erro fatal | Imprime traceback se `--debug`, `sys.exit(1)` | - |
+| Tipo de Erro                                | Tratamento                                          | Status                     |
+| ------------------------------------------- | --------------------------------------------------- | -------------------------- |
+| `AuthenticationError.NO_NETWORKS_TO_ACCESS` | Retorna `False`, pula network                       | `auth_error`               |
+| `Unauthorized` / `PermissionDenied`         | Captura no worker, registra no dashboard            | `auth_error`               |
+| HTTP 429 / Rate limit                       | Exponential backoff com ate 10 retries              | `rate_limit` (se esgotado) |
+| Erro SOAP generico                          | Retry no `_report_service` (5 tentativas, delay 1s) | `error`                    |
+| Erro de bulk write                          | Logado, chunk inteiro contado como erro             | `error`                    |
+| `KeyboardInterrupt`                         | Encerra graciosamente com `sys.exit(1)`             | -                          |
+| Erro fatal                                  | Imprime traceback se `--debug`, `sys.exit(1)`       | -                          |
 
 ## Conexao MongoDB
 
-| Parametro | Valor |
-|-----------|-------|
-| Protocolo | `mongodb+srv://` (TLS) |
-| Max pool size | 100 |
-| Min pool size | 10 |
-| Connect timeout | 5000ms |
-| Server selection timeout | 5000ms |
-| TLS | Habilitado |
+| Parametro                | Valor                  |
+| ------------------------ | ---------------------- |
+| Protocolo                | `mongodb+srv://` (TLS) |
+| Max pool size            | 100                    |
+| Min pool size            | 10                     |
+| Connect timeout          | 5000ms                 |
+| Server selection timeout | 5000ms                 |
+| TLS                      | Habilitado             |
 
 ## Testes
 
@@ -324,13 +326,13 @@ O projeto possui **338 testes** com **99% de cobertura** de codigo. Todas as dep
 pip install -r requirements-test.txt
 ```
 
-| Pacote | Uso |
-|--------|-----|
-| `pytest` | Framework de testes |
-| `pytest-cov` | Relatorio de cobertura |
-| `pytest-mock` | Fixtures de mock |
-| `pytest-timeout` | Timeout por teste |
-| `freezegun` | Mock de datas/horarios |
+| Pacote           | Uso                    |
+| ---------------- | ---------------------- |
+| `pytest`         | Framework de testes    |
+| `pytest-cov`     | Relatorio de cobertura |
+| `pytest-mock`    | Fixtures de mock       |
+| `pytest-timeout` | Timeout por teste      |
+| `freezegun`      | Mock de datas/horarios |
 
 ### Execucao
 
@@ -365,29 +367,29 @@ tests/
 
 ### Cobertura
 
-| Modulo | Cobertura |
-|--------|-----------|
-| `config/` | 100% |
-| `core/multiprocess/` | 100% |
-| `services/` | 100% |
-| `repositories/` | 100% |
-| `DTO/` | 100% |
-| `helpers/` | 100% |
-| `utils/` | 100% |
-| `client/` | 100% |
-| `worker.py` | 98% |
-| `soap_multiprocess.py` | 97% |
-| **Total** | **99%** |
+| Modulo                 | Cobertura |
+| ---------------------- | --------- |
+| `config/`              | 100%      |
+| `core/multiprocess/`   | 100%      |
+| `services/`            | 100%      |
+| `repositories/`        | 100%      |
+| `DTO/`                 | 100%      |
+| `helpers/`             | 100%      |
+| `utils/`               | 100%      |
+| `client/`              | 100%      |
+| `worker.py`            | 98%       |
+| `soap_multiprocess.py` | 97%       |
+| **Total**              | **99%**   |
 
 ## Dependencias Principais
 
-| Pacote | Versao | Uso |
-|--------|--------|-----|
-| `googleads` | 48.0.0 | Cliente SOAP para Google Ad Manager |
-| `google-auth` | 2.40.1 | Autenticacao OAuth2 Service Account |
-| `pymongo` | 4.12.1 | Driver MongoDB |
-| `redis` | 5.3.0 | Cliente Redis |
-| `python-dotenv` | 1.1.0 | Carregamento de `.env` |
-| `tqdm` | 4.67.1 | Barra de progresso |
-| `zeep` | 4.3.1 | Cliente SOAP (dependencia do googleads) |
-| `lxml` | 5.4.0 | Parser XML |
+| Pacote          | Versao | Uso                                     |
+| --------------- | ------ | --------------------------------------- |
+| `googleads`     | 48.0.0 | Cliente SOAP para Google Ad Manager     |
+| `google-auth`   | 2.40.1 | Autenticacao OAuth2 Service Account     |
+| `pymongo`       | 4.12.1 | Driver MongoDB                          |
+| `redis`         | 5.3.0  | Cliente Redis                           |
+| `python-dotenv` | 1.1.0  | Carregamento de `.env`                  |
+| `tqdm`          | 4.67.1 | Barra de progresso                      |
+| `zeep`          | 4.3.1  | Cliente SOAP (dependencia do googleads) |
+| `lxml`          | 5.4.0  | Parser XML                              |

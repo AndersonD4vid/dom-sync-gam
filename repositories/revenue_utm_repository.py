@@ -7,12 +7,12 @@ logger = logging.getLogger(__name__)
 
 
 class RevenueUtmRepository(BaseRepository):
-    """Repositorio para colecao dom_revenue_by_utm_campaign"""
+    """Repositorio para colecao DomRevenueByUtmCampaign"""
 
     UNIQUE_FIELDS = ['domain', 'network', 'utm_campaign', 'date']
 
     def __init__(self):
-        super().__init__('dom_revenue_by_utm_campaign')
+        super().__init__('DomRevenueByUtmCampaign')
         self._ensure_indexes()
 
     def _ensure_indexes(self):
@@ -77,7 +77,7 @@ class RevenueUtmRepository(BaseRepository):
                         filter_dict,
                         {
                             '$set': update_data,
-                            '$setOnInsert': {'created_at': datetime.utcnow()}
+                            '$setOnInsert': {'created_at': datetime.utcnow(), 'invoiced': False}
                         },
                         upsert=True
                     )

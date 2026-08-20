@@ -14,6 +14,11 @@ NETWORKS = [
         "name": "RedePublica",
         "enabled": True,
     },
+    {
+        "network_code": "23062194970",
+        "name": "Qcartao",
+        "enabled": True,
+    },
     # Add more networks as needed
 ]
 

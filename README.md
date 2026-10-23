@@ -262,9 +262,9 @@ Para executar somente uma network, acrescente, por exemplo:
 
 ### Docker e GHCR
 
-| Objetivo                         | Comando                                                                   |
-| -------------------------------- | ------------------------------------------------------------------------- | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Iniciar o container local        | `docker rm -f dom-sync 2>/dev/null                                        |     | true`e depois`docker run -d --name dom-sync --env-file .env -v "$PWD/config/service-account-key.json:/app/config/service-account-key.json:ro" dom-sync-gam:local tail -f /dev/null` |
+| Objetivo                         | Comando |
+| -------------------------------- | --- |
+| Iniciar o container local        | `docker rm -f dom-sync 2>/dev/null`<br>`docker run -d --name dom-sync --env-file .env -v "$PWD/config/service-account-key.json:/app/config/service-account-key.json:ro" dom-sync-gam:local tail -f /dev/null` |
 | Construir a imagem local         | `docker build --platform linux/amd64 -t dom-sync-gam:local .`             |
 | Criar/taguear imagem para o GHCR | `docker tag dom-sync-gam:local ghcr.io/andersond4vid/dom-sync-gam:latest` |
 | Autenticar no GHCR               | `docker login ghcr.io`                                                    |
@@ -272,6 +272,33 @@ Para executar somente uma network, acrescente, por exemplo:
 | Baixar a imagem na VPS           | `docker pull ghcr.io/andersond4vid/dom-sync-gam:latest`                   |
 
 O `docker push` so deve ser feito depois de validar a imagem localmente. O `.env` e o `service-account-key.json` devem continuar fora da imagem e ser fornecidos em runtime.
+
+### Atalhos locais com Make
+
+Para nao precisar memorizar os comandos longos, use o `Makefile` na raiz do projeto. Primeiro, inicie o ambiente:
+
+```bash
+make up
+```
+
+Depois, use estes atalhos:
+
+| Acao | Comando curto |
+| --- | --- |
+| Dominios de hoje | `make domain-today` |
+| Dominios de ontem | `make domain-yesterday` |
+| Dominios dos ultimos 7 dias | `make domain-7d` |
+| Dominios do mes atual | `make domain-month` |
+| UTMs de hoje | `make utm-today` |
+| UTMs de ontem | `make utm-yesterday` |
+| UTMs dos ultimos 7 dias | `make utm-7d` |
+| UTMs do mes atual | `make utm-month` |
+| Dominios e UTMs dos ultimos 7 dias | `make all-7d` |
+| Verificar container | `make ps` |
+| Ver logs | `make logs` |
+| Parar/remover container | `make down` |
+
+O comando `make up` sempre reconstrói a imagem local antes de iniciar o container, garantindo que as alteracoes recentes do codigo estejam presentes. Para executar somente uma network, continue usando o comando completo com `--network` ou crie um atalho especifico no Makefile.
 
 ## Arquitetura
 

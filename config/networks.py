@@ -19,6 +19,11 @@ NETWORKS = [
         "name": "Qcartao",
         "enabled": True,
     },
+    {
+        "network_code": "21670997783",
+        "name": "Bloogao",
+        "enabled": True,
+    },
     # Add more networks as needed
 ]
 

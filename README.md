@@ -300,6 +300,18 @@ Depois, use estes atalhos:
 
 O comando `make up` sempre reconstrói a imagem local antes de iniciar o container, garantindo que as alteracoes recentes do codigo estejam presentes. Para executar somente uma network, continue usando o comando completo com `--network` ou crie um atalho especifico no Makefile.
 
+## Status das sincronizacoes
+
+Cada execucao atualiza a colecao `DomSyncUpdateStatus`. Ela possui um documento com `_id` automatico do MongoDB para cada combinacao de:
+
+```text
+source_collection + period_key + network
+```
+
+As colecoes monitoradas sao `DomRevenueByDomain` e `DomRevenueByUtmCampaign`. O documento registra o periodo real (`period_start` e `period_end`), o ultimo inicio de tentativa, o ultimo sucesso, a ultima gravacao de dados, a quantidade de registros e o erro da network, quando houver.
+
+Os status possiveis sao `running`, `success`, `partial`, `no_data`, `auth_error` e `error`. Uma execucao sem dados nao atualiza `last_data_update_at`; assim, esse campo pode ser usado para identificar uma sincronizacao parada ou sem dados recentes.
+
 ## Arquitetura
 
 O projeto segue uma arquitetura em camadas com os seguintes design patterns:

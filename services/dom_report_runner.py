@@ -4,8 +4,14 @@ from pymongo.errors import ConnectionFailure
 from services.gam_service import GamService
 from services.metric_report_service import MetricsReportService
 from services.process_metrics import MetricsProcessor
+from repositories.sync_update_status_repository import SyncUpdateStatusRepository
 
 logger = logging.getLogger(__name__)
+
+SOURCE_COLLECTIONS = {
+    'domain': 'DomRevenueByDomain',
+    'utm_campaign': 'DomRevenueByUtmCampaign',
+}
 
 
 class ReportType:
@@ -44,7 +50,37 @@ def run(network, report_type, day):
         return None
 
     # 1. Criar o servico GAM
+    source_collection = SOURCE_COLLECTIONS.get(report_type)
+    if source_collection is None:
+        logger.error(f"Tipo de relatorio invalido: {report_type}")
+        return None
+
     gam_service = GamService(network, period)
+
+    # As datas reais ficam registradas junto com o nome do periodo.
+    period_start, period_end = gam_service._get_date_range()
+    period_start = period_start.date().isoformat()
+    period_end = period_end.date().isoformat()
+
+    def update_status(method, *args, **kwargs):
+        """Status nao deve interromper a sincronizacao principal."""
+        try:
+            repository = SyncUpdateStatusRepository()
+            getattr(repository, method)(*args, **kwargs)
+        except Exception as e:
+            logger.error(
+                f"[{network}] Falha ao atualizar status de sincronizacao: {str(e)[:200]}"
+            )
+
+    status_args = (
+        source_collection,
+        report_type,
+        day,
+        period_start,
+        period_end,
+        str(network),
+    )
+    update_status('mark_attempt', *status_args)
 
     # 2. Executar o relatorio baseado no tipo
     try:
@@ -59,14 +95,27 @@ def run(network, report_type, day):
         # Verifica se eh erro de autenticacao
         if "NO_NETWORKS_TO_ACCESS" in str(e):
             logger.warning(f"Sem acesso a network {network}: {str(e)[:100]}")
+            update_status(
+                'mark_error',
+                *status_args,
+                status='auth_error',
+                error=str(e),
+            )
             return False
         else:
             logger.error(f"Erro ao obter dados para a network {network}: {str(e)[:100]}")
+            update_status(
+                'mark_error',
+                *status_args,
+                status='error',
+                error=str(e),
+            )
             return None
 
     # Verifica se ha dados
     if not data or len(data) == 0:
         logger.warning(f"[{network}] Nenhum dado retornado do GAM (report_type={report_type}, day={day})")
+        update_status('mark_no_data', *status_args)
         return []
 
     logger.info(f"[{network}] GAM retornou {len(data)} linhas (report_type={report_type})")
@@ -92,6 +141,7 @@ def run(network, report_type, day):
             f"[{network}] Todos os registros foram filtrados no processamento "
             f"(report_type={report_type})"
         )
+        update_status('mark_no_data', *status_args)
         return {'total': 0, 'processed': 0, 'errors': 0}
 
     # 4. Salvar no banco usando o processador
@@ -108,5 +158,13 @@ def run(network, report_type, day):
     else:
         stats = processor.process_utm_bulk(processed_data)
 
+    update_status(
+        'mark_success',
+        *status_args,
+        records_found=len(data),
+        records_processed=len(processed_data),
+        stats=stats,
+        status='partial' if stats.get('errors', 0) else 'success',
+    )
     logger.info(f"[{network}] Dados salvos com sucesso: {stats}")
     return stats

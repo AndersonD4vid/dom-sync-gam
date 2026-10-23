@@ -16,14 +16,14 @@ NETWORKS = [
     },
     {
         "network_code": "23062194970",
-        "name": "Qcartao",
+        "name": "Qcartao", # linkdobem.com
         "enabled": True,
     },
     {
         "network_code": "21670997783",
-        "name": "Bloogao",
+        "name": "Bloogao", # bloogao.com 
         "enabled": True,
-    },
+    }
     # Add more networks as needed
 ]
 

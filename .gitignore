@@ -16,6 +16,7 @@ env/
 # Environment variables
 .env
 .env.production
+.env.development
 
 # IDE
 .vscode/

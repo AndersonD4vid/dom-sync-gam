@@ -4,6 +4,275 @@
 
 Pipeline de sincronizacao de metricas do **Google Ad Manager (GAM)** para MongoDB. Extrai relatorios de receita por dominio e UTM campaign via SOAP API, processa as metricas e persiste em bulk no MongoDB.
 
+## Guia rapido para executar
+
+Este guia explica o fluxo completo para quem ainda esta se familiarizando com Docker.
+
+### 1. O que o projeto faz
+
+O projeto consulta o Google Ad Manager, agrega as metricas e salva em duas colecoes do MongoDB:
+
+- `DomRevenueByDomain`: receita agrupada por dominio;
+- `DomRevenueByUtmCampaign`: receita agrupada por dominio e campanha UTM.
+
+Os relatorios podem ser executados para `hoje`, `ontem`, `ultimos 7 dias` e `mês todo`.
+
+### 2. Configuracao inicial
+
+Instale o Docker Desktop (Mac/Windows) ou Docker Engine (Linux) e clone o repositorio:
+
+```bash
+git clone git@github.com:AndersonD4vid/dom-sync-gam.git
+cd dom-sync-gam
+```
+
+Crie o arquivo de ambiente:
+
+```bash
+cp .env.example .env
+```
+
+Configure no `.env` as variaveis do MongoDB. O projeto monta a URI a partir destas chaves:
+
+```env
+MONGO_HOST=seu-host
+MONGO_PORT=27017
+MONGO_DB=seu-banco
+MONGO_USER=seu-usuario
+MONGO_PASSWORD=sua-senha
+MONGO_AUTH_SOURCE=seu-banco
+MONGO_REPLICA_SET=rs0
+MONGO_TLS=false
+MONGO_DIRECT_CONNECTION=false
+```
+
+Configure tambem o caminho da Service Account:
+
+```env
+GAM_KEY_FILE=/app/config/service-account-key.json
+```
+
+Coloque o JSON fornecido pelo Google em:
+
+```text
+config/service-account-key.json
+```
+
+Esse arquivo e o `.env` contem segredos e nao devem ser commitados. Eles ja estao protegidos pelo `.gitignore`.
+
+A Service Account precisa ter permissao de leitura e execucao de relatorios em cada network GAM cadastrada em `config/networks.py`. Se aparecer `NO_NETWORKS_TO_ACCESS`, a credencial nao tem acesso aquela network.
+
+### 3. Rodar localmente com Docker
+
+Construa a imagem para a plataforma da VPS. Em um Mac Apple Silicon, use `linux/amd64`:
+
+```bash
+docker build --platform linux/amd64 \
+  -t ghcr.io/andersond4vid/dom-sync-gam:latest .
+```
+
+Inicie o container. O comando `tail -f /dev/null` mantem o container ativo para que os relatorios sejam executados com `docker exec`:
+
+```bash
+docker rm -f dom-sync 2>/dev/null || true
+
+docker run -d \
+  --name dom-sync \
+  --restart unless-stopped \
+  --env-file .env \
+  -v "$PWD/config/service-account-key.json:/app/config/service-account-key.json:ro" \
+  ghcr.io/andersond4vid/dom-sync-gam:latest \
+  tail -f /dev/null
+```
+
+Confirme se esta ativo:
+
+```bash
+docker ps
+docker exec dom-sync grep -n Bloogao /app/config/networks.py
+```
+
+### 4. Popular o banco
+
+Execute um relatorio por vez e aguarde o relatorio final antes do proximo.
+
+Dominios de hoje:
+
+```bash
+docker exec dom-sync python soap_multiprocess.py \
+  --run --type domain --day today --workers 2
+```
+
+Dominios de ontem:
+
+```bash
+docker exec dom-sync python soap_multiprocess.py \
+  --run --type domain --day yesterday --workers 2
+```
+
+Dominios dos ultimos 7 dias:
+
+```bash
+docker exec dom-sync python soap_multiprocess.py \
+  --run --type domain --day last_7_days --workers 2
+```
+
+Campanhas UTM de hoje:
+
+```bash
+docker exec dom-sync python soap_multiprocess.py \
+  --run --type utm_campaign --day today --workers 2
+```
+
+Campanhas UTM de ontem:
+
+```bash
+docker exec dom-sync python soap_multiprocess.py \
+  --run --type utm_campaign --day yesterday --workers 2
+```
+
+Campanhas UTM dos ultimos 7 dias:
+
+```bash
+docker exec dom-sync python soap_multiprocess.py \
+  --run --type utm_campaign --day last_7_days --workers 2
+```
+
+Para testar somente uma network:
+
+```bash
+docker exec dom-sync python soap_multiprocess.py \
+  --run --type domain --day last_7_days \
+  --network 21670997783 --workers 1 --debug
+```
+
+Importante: `Sucesso: 3` significa que tres jobs foram aceitos pelo GAM. Isso nao significa necessariamente que tres documentos foram gravados. Se o relatorio nao retornar linhas, nada sera inserido. Verifique tambem os logs:
+
+```bash
+docker exec dom-sync tail -n 100 /app/dom_processing.log
+```
+
+### 5. Publicar a imagem no GHCR
+
+O `git push` nao constroi uma imagem automaticamente neste repositorio. Depois de alterar o codigo, o fluxo e:
+
+```bash
+git status
+git add arquivo-alterado
+git commit -m "descreve a alteracao"
+git push origin main
+```
+
+Depois construa uma nova imagem:
+
+```bash
+docker build --platform linux/amd64 \
+  -t ghcr.io/andersond4vid/dom-sync-gam:latest .
+```
+
+Autentique no GHCR, caso ainda nao esteja autenticado:
+
+```bash
+docker login ghcr.io
+```
+
+Publique:
+
+```bash
+docker push ghcr.io/andersond4vid/dom-sync-gam:latest
+```
+
+Nunca publique uma imagem contendo `.env`, senha do MongoDB ou a Service Account. Prefira passar o `.env` com `--env-file` e montar o JSON com `-v`, como no exemplo acima. Antes de publicar, confirme que os segredos nao estao sendo copiados para a imagem pelo `Dockerfile`.
+
+### 6. Atualizar a VPS
+
+Na VPS, baixar a imagem nao atualiza um container que ja esta rodando. Depois do `docker push`, execute:
+
+```bash
+docker pull ghcr.io/andersond4vid/dom-sync-gam:latest
+
+docker rm -f dom-sync 2>/dev/null || true
+
+docker run -d \
+  --name dom-sync \
+  --restart unless-stopped \
+  --env-file .env \
+  -v /caminho/na/vps/service-account-key.json:/app/config/service-account-key.json:ro \
+  ghcr.io/andersond4vid/dom-sync-gam:latest \
+  tail -f /dev/null
+```
+
+Substitua os caminhos pelos arquivos existentes na VPS. Confirme a versao implantada:
+
+```bash
+docker ps
+docker exec dom-sync grep -n Bloogao /app/config/networks.py
+```
+
+Em seguida, execute os comandos de populacao da secao anterior.
+
+### 7. O que fazer depois de qualquer alteracao
+
+Para alteracoes em `config/`, `services/`, `repositories/`, `core/` ou qualquer outro codigo que vai rodar na VPS:
+
+1. Teste localmente.
+2. Faça `git add`, `git commit` e `git push`.
+3. Construa novamente a imagem Docker.
+4. Publique a nova imagem no GHCR.
+5. Na VPS, execute `docker pull`.
+6. Recrie o container, porque containers existentes nao trocam de imagem sozinhos.
+7. Execute o relatorio desejado e confira os logs e o MongoDB.
+
+Se a alteracao for somente em um arquivo de configuracao que esta dentro da imagem, tambem e necessario reconstruir e publicar a imagem. O `docker pull` so baixa a nova versao; ele nao reinicia nem recria o container automaticamente.
+
+### 8. Execucao local sem Docker
+
+Para depurar mais rapidamente no Mac, tambem e possivel executar com Python:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+GAM_KEY_FILE="$PWD/config/service-account-key.json" \
+.venv/bin/python soap_multiprocess.py \
+  --run --type domain --day last_7_days --workers 2
+```
+
+Nesse modo, o Redis precisa estar disponivel localmente e o `.env` continua apontando para o banco configurado.
+
+## Tabela de comandos rapidos
+
+Os comandos abaixo consideram que o container se chama `dom-sync` e esta ativo.
+
+### Popular o MongoDB
+
+| Periodo        | Dominios (`DomRevenueByDomain`)                                                                                                            | Campanhas UTM (`DomRevenueByUtmCampaign`)                                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Hoje           | `docker exec dom-sync python soap_multiprocess.py --run --type domain --day today --workers 2`                                             | `docker exec dom-sync python soap_multiprocess.py --run --type utm_campaign --day today --workers 2`                                             |
+| Ontem          | `docker exec dom-sync python soap_multiprocess.py --run --type domain --day yesterday --workers 2`                                         | `docker exec dom-sync python soap_multiprocess.py --run --type utm_campaign --day yesterday --workers 2`                                         |
+| Ultimos 7 dias | `docker exec dom-sync python soap_multiprocess.py --run --type domain --day last_7_days --workers 2`                                       | `docker exec dom-sync python soap_multiprocess.py --run --type utm_campaign --day last_7_days --workers 2`                                       |
+| Mes atual      | `D=$(date +%d \| sed 's/^0//'); docker exec dom-sync python soap_multiprocess.py --run --type domain --day last_$((D-1))_days --workers 2` | `D=$(date +%d \| sed 's/^0//'); docker exec dom-sync python soap_multiprocess.py --run --type utm_campaign --day last_$((D-1))_days --workers 2` |
+
+O comando de `Mes atual` calcula automaticamente o periodo do primeiro dia do mes ate hoje. Execute um comando por vez e aguarde o relatorio final.
+
+Para executar somente uma network, acrescente, por exemplo:
+
+```bash
+--network 21670997783
+```
+
+### Docker e GHCR
+
+| Objetivo                         | Comando                                                                   |
+| -------------------------------- | ------------------------------------------------------------------------- | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Iniciar o container local        | `docker rm -f dom-sync 2>/dev/null                                        |     | true`e depois`docker run -d --name dom-sync --env-file .env -v "$PWD/config/service-account-key.json:/app/config/service-account-key.json:ro" dom-sync-gam:local tail -f /dev/null` |
+| Construir a imagem local         | `docker build --platform linux/amd64 -t dom-sync-gam:local .`             |
+| Criar/taguear imagem para o GHCR | `docker tag dom-sync-gam:local ghcr.io/andersond4vid/dom-sync-gam:latest` |
+| Autenticar no GHCR               | `docker login ghcr.io`                                                    |
+| Subir a imagem para o GHCR       | `docker push ghcr.io/andersond4vid/dom-sync-gam:latest`                   |
+| Baixar a imagem na VPS           | `docker pull ghcr.io/andersond4vid/dom-sync-gam:latest`                   |
+
+O `docker push` so deve ser feito depois de validar a imagem localmente. O `.env` e o `service-account-key.json` devem continuar fora da imagem e ser fornecidos em runtime.
+
 ## Arquitetura
 
 O projeto segue uma arquitetura em camadas com os seguintes design patterns:

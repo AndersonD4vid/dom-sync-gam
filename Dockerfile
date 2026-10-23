@@ -39,7 +39,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY client/ ./client/
 COPY config/ ./config/
 COPY core/ ./core/
-COPY credentials/ ./credentials/
 COPY DTO/ ./DTO/
 COPY helpers/ ./helpers/
 COPY repositories/ ./repositories/
@@ -47,7 +46,6 @@ COPY services/ ./services/
 COPY utils/ ./utils/
 COPY soap_multiprocess.py .
 COPY list_records.py .
-COPY .env .
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

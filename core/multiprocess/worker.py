@@ -24,7 +24,12 @@ class NetworkWorker:
             self.logger.info(f"[{network_code}] Iniciando processamento: {network_name}")
 
             result = self._api_call_with_retry(
-                network_code, run, network_code, params.type, params.day
+                network_code,
+                run,
+                network_code,
+                params.type,
+                params.day,
+                network_name=network_name,
             )
             request_count += 1
 

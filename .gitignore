@@ -41,3 +41,4 @@ Thumbs.db
 *.whl
 
 credentials/enccpdo1_rsa.private
+credentials/service-account-key.json

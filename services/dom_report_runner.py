@@ -5,6 +5,7 @@ from services.gam_service import GamService
 from services.metric_report_service import MetricsReportService
 from services.process_metrics import MetricsProcessor
 from repositories.sync_update_status_repository import SyncUpdateStatusRepository
+from config.networks import get_network_by_code
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +42,14 @@ def parse_day_parameter(day):
         return None
 
 
-def run(network, report_type, day):
+def run(network, report_type, day, network_name=None):
     """Executa um relatorio DOM com rate limiting"""
+
+    # O worker normalmente informa o nome diretamente. O fallback mantém o
+    # runner utilizável quando chamado de forma isolada.
+    if network_name is None:
+        network_config = get_network_by_code(str(network))
+        network_name = network_config.get('name') if network_config else None
 
     period = parse_day_parameter(day)
     if period is None:
@@ -80,7 +87,7 @@ def run(network, report_type, day):
         period_end,
         str(network),
     )
-    update_status('mark_attempt', *status_args)
+    update_status('mark_attempt', *status_args, network_name=network_name)
 
     # 2. Executar o relatorio baseado no tipo
     try:
@@ -100,6 +107,7 @@ def run(network, report_type, day):
                 *status_args,
                 status='auth_error',
                 error=str(e),
+                network_name=network_name,
             )
             return False
         else:
@@ -109,13 +117,14 @@ def run(network, report_type, day):
                 *status_args,
                 status='error',
                 error=str(e),
+                network_name=network_name,
             )
             return None
 
     # Verifica se ha dados
     if not data or len(data) == 0:
         logger.warning(f"[{network}] Nenhum dado retornado do GAM (report_type={report_type}, day={day})")
-        update_status('mark_no_data', *status_args)
+        update_status('mark_no_data', *status_args, network_name=network_name)
         return []
 
     logger.info(f"[{network}] GAM retornou {len(data)} linhas (report_type={report_type})")
@@ -141,7 +150,7 @@ def run(network, report_type, day):
             f"[{network}] Todos os registros foram filtrados no processamento "
             f"(report_type={report_type})"
         )
-        update_status('mark_no_data', *status_args)
+        update_status('mark_no_data', *status_args, network_name=network_name)
         return {'total': 0, 'processed': 0, 'errors': 0}
 
     # 4. Salvar no banco usando o processador
@@ -165,6 +174,7 @@ def run(network, report_type, day):
         records_processed=len(processed_data),
         stats=stats,
         status='partial' if stats.get('errors', 0) else 'success',
+        network_name=network_name,
     )
     logger.info(f"[{network}] Dados salvos com sucesso: {stats}")
     return stats

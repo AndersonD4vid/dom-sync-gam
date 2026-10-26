@@ -43,6 +43,7 @@ class SyncUpdateStatusRepository(BaseRepository):
         network: str,
         status: str,
         error: Optional[str] = None,
+        network_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         now = datetime.utcnow()
         update = {
@@ -52,6 +53,7 @@ class SyncUpdateStatusRepository(BaseRepository):
             'period_start': period_start,
             'period_end': period_end,
             'network': str(network),
+            'network_name': network_name,
             'status': status,
             'last_attempt_at': now,
             'updated_at': now,
@@ -70,6 +72,7 @@ class SyncUpdateStatusRepository(BaseRepository):
         period_start: str,
         period_end: str,
         network: str,
+        network_name: Optional[str] = None,
     ):
         update = self._base_update(
             source_collection,
@@ -79,6 +82,7 @@ class SyncUpdateStatusRepository(BaseRepository):
             period_end,
             network,
             'running',
+            network_name=network_name,
         )
         return self.collection.update_one(
             self._filter(source_collection, period_key, network),
@@ -97,6 +101,7 @@ class SyncUpdateStatusRepository(BaseRepository):
         period_start: str,
         period_end: str,
         network: str,
+        network_name: Optional[str] = None,
     ):
         update = self._base_update(
             source_collection,
@@ -106,6 +111,7 @@ class SyncUpdateStatusRepository(BaseRepository):
             period_end,
             network,
             'no_data',
+            network_name=network_name,
         )
         update['records_found'] = 0
         update['records_processed'] = 0
@@ -128,6 +134,7 @@ class SyncUpdateStatusRepository(BaseRepository):
         network: str,
         status: str,
         error: str,
+        network_name: Optional[str] = None,
     ):
         update = self._base_update(
             source_collection,
@@ -138,6 +145,7 @@ class SyncUpdateStatusRepository(BaseRepository):
             network,
             status,
             error,
+            network_name=network_name,
         )
         return self.collection.update_one(
             self._filter(source_collection, period_key, network),
@@ -160,6 +168,7 @@ class SyncUpdateStatusRepository(BaseRepository):
         records_processed: int,
         stats: Dict[str, Any],
         status: str = 'success',
+        network_name: Optional[str] = None,
     ):
         now = datetime.utcnow()
         update = {
@@ -169,6 +178,7 @@ class SyncUpdateStatusRepository(BaseRepository):
             'period_start': period_start,
             'period_end': period_end,
             'network': str(network),
+            'network_name': network_name,
             'status': status,
             'records_found': records_found,
             'records_processed': records_processed,

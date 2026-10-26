@@ -49,6 +49,6 @@ README.md
 .env.production
 
 # Google service account key
-config/service-account-key.json
+credentials/service-account-key.json
 
 credentials/enccpdo1_rsa.private

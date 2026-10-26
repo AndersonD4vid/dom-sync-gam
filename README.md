@@ -49,13 +49,13 @@ MONGO_DIRECT_CONNECTION=false
 Configure tambem o caminho da Service Account:
 
 ```env
-GAM_KEY_FILE=/app/config/service-account-key.json
+GAM_KEY_FILE=credentials/service-account-key.json
 ```
 
 Coloque o JSON fornecido pelo Google em:
 
 ```text
-config/service-account-key.json
+credentials/service-account-key.json
 ```
 
 Esse arquivo e o `.env` contem segredos e nao devem ser commitados. Eles ja estao protegidos pelo `.gitignore`.
@@ -80,7 +80,7 @@ docker run -d \
   --name dom-sync \
   --restart unless-stopped \
   --env-file .env \
-  -v "$PWD/config/service-account-key.json:/app/config/service-account-key.json:ro" \
+  -v "$PWD/credentials/service-account-key.json:/app/credentials/service-account-key.json:ro" \
   ghcr.io/andersond4vid/dom-sync-gam:latest \
   tail -f /dev/null
 ```
@@ -197,7 +197,7 @@ docker run -d \
   --name dom-sync \
   --restart unless-stopped \
   --env-file .env \
-  -v /caminho/na/vps/service-account-key.json:/app/config/service-account-key.json:ro \
+  -v /caminho/na/vps/service-account-key.json:/app/credentials/service-account-key.json:ro \
   ghcr.io/andersond4vid/dom-sync-gam:latest \
   tail -f /dev/null
 ```
@@ -232,7 +232,7 @@ Para depurar mais rapidamente no Mac, tambem e possivel executar com Python:
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-GAM_KEY_FILE="$PWD/config/service-account-key.json" \
+GAM_KEY_FILE="$PWD/credentials/service-account-key.json" \
 .venv/bin/python soap_multiprocess.py \
   --run --type domain --day last_7_days --workers 2
 ```
@@ -264,7 +264,7 @@ Para executar somente uma network, acrescente, por exemplo:
 
 | Objetivo                         | Comando |
 | -------------------------------- | --- |
-| Iniciar o container local        | `docker rm -f dom-sync 2>/dev/null`<br>`docker run -d --name dom-sync --env-file .env -v "$PWD/config/service-account-key.json:/app/config/service-account-key.json:ro" dom-sync-gam:local tail -f /dev/null` |
+| Iniciar o container local        | `docker rm -f dom-sync 2>/dev/null`<br>`docker run -d --name dom-sync --env-file .env -v "$PWD/credentials/service-account-key.json:/app/credentials/service-account-key.json:ro" dom-sync-gam:local tail -f /dev/null` |
 | Construir a imagem local         | `docker build --platform linux/amd64 -t dom-sync-gam:local .`             |
 | Criar/taguear imagem para o GHCR | `docker tag dom-sync-gam:local ghcr.io/andersond4vid/dom-sync-gam:latest` |
 | Autenticar no GHCR               | `docker login ghcr.io`                                                    |
@@ -278,27 +278,29 @@ O `docker push` so deve ser feito depois de validar a imagem localmente. O `.env
 Para nao precisar memorizar os comandos longos, use o `Makefile` na raiz do projeto. Primeiro, inicie o ambiente:
 
 ```bash
-make up
+make up prod
 ```
+
+O ambiente deve ser informado sempre como o ultimo argumento: `prod` usa o `.env` e `dev` usa o `.env.development`. Se o ambiente nao for informado, os atalhos que dependem do container serao rejeitados.
 
 Depois, use estes atalhos:
 
 | Acao | Comando curto |
 | --- | --- |
-| Dominios de hoje | `make domain-today` |
-| Dominios de ontem | `make domain-yesterday` |
-| Dominios dos ultimos 7 dias | `make domain-7d` |
-| Dominios do mes atual | `make domain-month` |
-| UTMs de hoje | `make utm-today` |
-| UTMs de ontem | `make utm-yesterday` |
-| UTMs dos ultimos 7 dias | `make utm-7d` |
-| UTMs do mes atual | `make utm-month` |
-| Dominios e UTMs dos ultimos 7 dias | `make all-7d` |
-| Verificar container | `make ps` |
-| Ver logs | `make logs` |
-| Parar/remover container | `make down` |
+| Dominios de hoje | `make domain-today prod` |
+| Dominios de ontem | `make domain-yesterday prod` |
+| Dominios dos ultimos 7 dias | `make domain-7d prod` |
+| Dominios do mes atual | `make domain-month prod` |
+| UTMs de hoje | `make utm-today prod` |
+| UTMs de ontem | `make utm-yesterday prod` |
+| UTMs dos ultimos 7 dias | `make utm-7d prod` |
+| UTMs do mes atual | `make utm-month prod` |
+| Dominios e UTMs dos ultimos 7 dias | `make all-7d prod` |
+| Verificar container | `make ps prod` |
+| Ver logs | `make logs prod` |
+| Parar/remover container | `make down prod` |
 
-O comando `make up` sempre reconstrói a imagem local antes de iniciar o container, garantindo que as alteracoes recentes do codigo estejam presentes. Para executar somente uma network, continue usando o comando completo com `--network` ou crie um atalho especifico no Makefile.
+Para desenvolvimento, substitua o sufixo `prod` por `dev`, por exemplo: `make up dev` e `make domain-today dev`. O comando `make up prod` ou `make up dev` sempre reconstrói a imagem local antes de iniciar o container, garantindo que as alteracoes recentes do codigo estejam presentes. Para executar somente uma network, continue usando o comando completo com `--network` ou crie um atalho especifico no Makefile.
 
 ## Status das sincronizacoes
 
@@ -308,7 +310,7 @@ Cada execucao atualiza a colecao `DomSyncUpdateStatus`. Ela possui um documento 
 source_collection + period_key + network
 ```
 
-As colecoes monitoradas sao `DomRevenueByDomain` e `DomRevenueByUtmCampaign`. O documento registra o periodo real (`period_start` e `period_end`), o ultimo inicio de tentativa, o ultimo sucesso, a ultima gravacao de dados, a quantidade de registros e o erro da network, quando houver.
+As colecoes monitoradas sao `DomRevenueByDomain` e `DomRevenueByUtmCampaign`. O documento registra o codigo (`network`) e o nome (`network_name`) da network, o periodo real (`period_start` e `period_end`), o ultimo inicio de tentativa, o ultimo sucesso, a ultima gravacao de dados, a quantidade de registros e o erro da network, quando houver.
 
 Os status possiveis sao `running`, `success`, `partial`, `no_data`, `auth_error` e `error`. Uma execucao sem dados nao atualiza `last_data_update_at`; assim, esse campo pode ser usado para identificar uma sincronizacao parada ou sem dados recentes.
 

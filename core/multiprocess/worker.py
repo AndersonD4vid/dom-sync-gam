@@ -23,6 +23,12 @@ class NetworkWorker:
         try:
             self.logger.info(f"[{network_code}] Iniciando processamento: {network_name}")
 
+            extra = {
+                key: network[key]
+                for key in ('source', 'joinads_network', 'domains', 'revenue_field', 'parent_network_code')
+                if network.get(key)
+            }
+
             result = self._api_call_with_retry(
                 network_code,
                 run,
@@ -30,6 +36,7 @@ class NetworkWorker:
                 params.type,
                 params.day,
                 network_name=network_name,
+                **extra,
             )
             request_count += 1
 

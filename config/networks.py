@@ -23,7 +23,20 @@ NETWORKS = [
         "network_code": "21670997783",
         "name": "Bloogao", # bloogao.com 
         "enabled": True,
-    }
+    },
+    {
+        "network_code": "23154702080",
+        "name": "DOM-MI-LATAM",
+        # MCM Manage Inventory do GAM LATAM: os dados vem da API de clientes do office.joinads.me,
+        # filtrados pela network pai; a credencial GAM nao precisa de acesso ao pai.
+        # Sem "domains": entram os dominios do usuario do token e dos usuarios filhos dele no office.
+        # Habilitar so depois do deploy do office (escopo de dominios + filtro `network` no key-value)
+        # e com JOINADS_API_TOKEN.
+        "enabled": False,
+        "source": "joinads_api",
+        "joinads_network": "22088551542",
+        "revenue_field": "revenue",
+    },
     # Add more networks as needed
 ]
 

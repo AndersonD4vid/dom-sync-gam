@@ -5,11 +5,24 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _normalize_domain(domain):
+    """Minusculo, sem espacos e sem 'www.' inicial (comparacao exata depois)"""
+    domain = str(domain).strip().lower()
+    return domain[4:] if domain.startswith("www.") else domain
+
+
 class MetricsReportService:
     """Servico de processamento e enriquecimento de metricas DOM"""
 
-    def __init__(self, network: str):
+    def __init__(self, network: str, domains: Optional[List[str]] = None):
         self.network = network
+        self.domains = (
+            {_normalize_domain(d) for d in domains} if domains else None
+        )
+
+    def _domain_allowed(self, domain) -> bool:
+        """Sem allowlist, tudo passa; com ela, so dominios exatos da lista"""
+        return self.domains is None or _normalize_domain(domain) in self.domains
 
     def process_domain_metrics(self, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
@@ -24,6 +37,7 @@ class MetricsReportService:
         aggregated = {}
         skipped_empty = 0
         skipped_dash = 0
+        skipped_domains = 0
 
         for row in items:
             domain = row.get('domain', '')
@@ -32,6 +46,10 @@ class MetricsReportService:
                     skipped_empty += 1
                 else:
                     skipped_dash += 1
+                continue
+
+            if not self._domain_allowed(domain):
+                skipped_domains += 1
                 continue
 
             date = row.get('date', '')
@@ -76,7 +94,8 @@ class MetricsReportService:
 
         logger.info(
             f"[{self.network}] process_domain_metrics: output {len(result)} records "
-            f"(aggregated from {len(items)}, skipped: {skipped_empty} empty, {skipped_dash} dash/not-set)"
+            f"(aggregated from {len(items)}, skipped: {skipped_empty} empty, {skipped_dash} dash/not-set, "
+            f"{skipped_domains} fora da allowlist)"
         )
         if result:
             logger.info(f"[{self.network}] process_domain_metrics: SAMPLE output: {result[0]}")
@@ -98,6 +117,10 @@ class MetricsReportService:
         for row in items:
             domain = row.get('domain', '')
             if not domain or domain == '-' or domain == '(not set)':
+                skipped += 1
+                continue
+
+            if not self._domain_allowed(domain):
                 skipped += 1
                 continue
 

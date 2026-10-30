@@ -15,6 +15,10 @@ class ConfigSingleton:
     def load_config(self):
         self.json_key_path = os.getenv('GAM_KEY_FILE')
 
+        # API de clientes da JoinAds (office.joinads.me)
+        self.JOINADS_API_URL = os.getenv('JOINADS_API_URL', 'https://office.joinads.me')
+        self.JOINADS_API_TOKEN = os.getenv('JOINADS_API_TOKEN')
+
         # Configuracao do Redis
         self.REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
         self.REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))

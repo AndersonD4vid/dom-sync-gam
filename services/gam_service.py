@@ -17,8 +17,11 @@ class GamService:
 
     version = "v202602"
 
-    def __init__(self, network_code, report_type=None):
+    def __init__(self, network_code, report_type=None, parent_network_code=None):
+        # network_code identifica a network (filha, no MCM MI); o client GAM usa
+        # o codigo do pai quando existir, pois o relatorio roda na network pai.
         self.network_code = network_code
+        self.parent_network_code = parent_network_code
         self.json_key_path = Config.json_key_path
 
         if report_type:
@@ -37,7 +40,7 @@ class GamService:
         ad_manager_client = ad_manager.AdManagerClient(
             oauth2_client=oauth2_client,
             application_name="JoinAds-DOM",
-            network_code=self.network_code,
+            network_code=self.parent_network_code or self.network_code,
         )
 
         self.ad_manager_client = ad_manager_client
@@ -49,7 +52,7 @@ class GamService:
         report_query = self._report_query_domain()
         report_service = self._report_service(client)
         response = self._report_run(report_query, report_service)
-        return response
+        return self._filter_child_network(response)
 
     def gam_revenue_by_utm_campaign(self):
         """Gera relatorio de revenue by utm_campaign (key-values)"""
@@ -57,7 +60,24 @@ class GamService:
         report_query = self._report_query_utm_campaign()
         report_service = self._report_service(client)
         response = self._report_run(report_query, report_service)
-        return response
+        return self._filter_child_network(response)
+
+    def _filter_child_network(self, rows):
+        """No MCM MI, mantem so as linhas da network filha (sem pai: no-op)"""
+        if not self.parent_network_code or not rows:
+            return rows
+        expected = str(self.network_code).strip()
+        return [
+            row
+            for row in rows
+            if str(row.get("child_network_code", "")).strip() == expected
+        ]
+
+    def _with_child_dimension(self, dimensions):
+        """Adiciona CHILD_NETWORK_CODE quando a network tem pai (MCM MI)"""
+        if self.parent_network_code:
+            return dimensions + ["CHILD_NETWORK_CODE"]
+        return dimensions
 
     def _get_date_range(self):
         """Calcula as datas de inicio e fim do relatorio"""
@@ -74,7 +94,7 @@ class GamService:
         start_date, end_date = self._get_date_range()
 
         report_query = {
-            "dimensions": ["DATE", "AD_UNIT_NAME"],
+            "dimensions": self._with_child_dimension(["DATE", "AD_UNIT_NAME"]),
             "columns": [
                 "AD_EXCHANGE_LINE_ITEM_LEVEL_IMPRESSIONS",
                 "AD_EXCHANGE_LINE_ITEM_LEVEL_CLICKS",
@@ -103,7 +123,9 @@ class GamService:
         start_date, end_date = self._get_date_range()
 
         report_query = {
-            "dimensions": ["DATE", "AD_UNIT_NAME", "CUSTOM_CRITERIA"],
+            "dimensions": self._with_child_dimension(
+                ["DATE", "AD_UNIT_NAME", "CUSTOM_CRITERIA"]
+            ),
             "columns": [
                 "AD_EXCHANGE_LINE_ITEM_LEVEL_IMPRESSIONS",
                 "AD_EXCHANGE_LINE_ITEM_LEVEL_CLICKS",

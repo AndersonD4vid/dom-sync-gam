@@ -2,6 +2,7 @@ import re
 import logging
 from pymongo.errors import ConnectionFailure
 from services.gam_service import GamService
+from services.joinads_service import JoinAdsService, JoinAdsAuthError
 from services.metric_report_service import MetricsReportService
 from services.process_metrics import MetricsProcessor
 from repositories.sync_update_status_repository import SyncUpdateStatusRepository
@@ -42,7 +43,9 @@ def parse_day_parameter(day):
         return None
 
 
-def run(network, report_type, day, network_name=None):
+def run(network, report_type, day, network_name=None, source=None,
+        joinads_network=None, domains=None, revenue_field=None,
+        parent_network_code=None):
     """Executa um relatorio DOM com rate limiting"""
 
     # O worker normalmente informa o nome diretamente. O fallback mantém o
@@ -50,6 +53,12 @@ def run(network, report_type, day, network_name=None):
     if network_name is None:
         network_config = get_network_by_code(str(network))
         network_name = network_config.get('name') if network_config else None
+        if network_config:
+            source = source or network_config.get('source')
+            joinads_network = joinads_network or network_config.get('joinads_network')
+            domains = domains or network_config.get('domains')
+            revenue_field = revenue_field or network_config.get('revenue_field')
+            parent_network_code = parent_network_code or network_config.get('parent_network_code')
 
     period = parse_day_parameter(day)
     if period is None:
@@ -62,7 +71,19 @@ def run(network, report_type, day, network_name=None):
         logger.error(f"Tipo de relatorio invalido: {report_type}")
         return None
 
-    gam_service = GamService(network, period)
+    # `network` e sempre o codigo da entrada, qualquer que seja a fonte dos dados.
+    use_joinads = source == 'joinads_api'
+    if use_joinads:
+        gam_service = JoinAdsService(
+            network, period, joinads_network=joinads_network, domains=domains,
+            revenue_field=revenue_field or 'revenue',
+        )
+    elif parent_network_code:
+        # MCM MI via GAM: o relatorio roda na network pai e e filtrado pela filha (`network`).
+        # Com source == 'joinads_api' o pai e ignorado (o ramo acima vence).
+        gam_service = GamService(network, period, parent_network_code=parent_network_code)
+    else:
+        gam_service = GamService(network, period)
 
     # As datas reais ficam registradas junto com o nome do periodo.
     period_start, period_end = gam_service._get_date_range()
@@ -92,15 +113,17 @@ def run(network, report_type, day, network_name=None):
     # 2. Executar o relatorio baseado no tipo
     try:
         if report_type == "domain":
-            data = gam_service.gam_revenue_by_domain()
+            data = (gam_service.joinads_revenue_by_domain() if use_joinads
+                    else gam_service.gam_revenue_by_domain())
         elif report_type == "utm_campaign":
-            data = gam_service.gam_revenue_by_utm_campaign()
+            data = (gam_service.joinads_revenue_by_utm_campaign() if use_joinads
+                    else gam_service.gam_revenue_by_utm_campaign())
         else:
             logger.error(f"Tipo de relatorio invalido: {report_type}")
             return None
     except Exception as e:
         # Verifica se eh erro de autenticacao
-        if "NO_NETWORKS_TO_ACCESS" in str(e):
+        if isinstance(e, JoinAdsAuthError) or "NO_NETWORKS_TO_ACCESS" in str(e):
             logger.warning(f"Sem acesso a network {network}: {str(e)[:100]}")
             update_status(
                 'mark_error',
@@ -133,7 +156,10 @@ def run(network, report_type, day, network_name=None):
         logger.info(f"[{network}] GAM SAMPLE first record: {data[0]}")
 
     # 3. Processar metricas
-    metrics_service = MetricsReportService(network)
+    if domains:
+        metrics_service = MetricsReportService(network, domains=domains)
+    else:
+        metrics_service = MetricsReportService(network)
 
     if report_type == "domain":
         processed_data = metrics_service.process_domain_metrics(data)

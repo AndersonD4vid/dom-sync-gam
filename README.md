@@ -406,6 +406,8 @@ cp .env.example .env
 | Variavel         | Descricao                                     | Default     |
 | ---------------- | --------------------------------------------- | ----------- |
 | `GAM_KEY_FILE`   | Caminho para o JSON da service account Google | -           |
+| `JOINADS_API_URL`   | URL base da API de clientes da JoinAds     | `https://office.joinads.me` |
+| `JOINADS_API_TOKEN` | Token do cliente na API JoinAds (so `source: joinads_api`) | -           |
 | `MONGO_HOST`     | Host do cluster MongoDB (SRV)                 | `localhost` |
 | `MONGO_PORT`     | Porta MongoDB                                 | `27017`     |
 | `MONGO_DB`       | Nome do banco                                 | `admanager` |
@@ -440,6 +442,23 @@ NETWORKS = [
 | `network_code` | `str`  | Codigo da network no GAM                       |
 | `name`         | `str`  | Nome descritivo                                |
 | `enabled`      | `bool` | Se `False`, a network e ignorada pelo pipeline |
+
+Campos opcionais para a network MCM "Manage Inventory" (MI), cujos dados vem da API de clientes da JoinAds (`office.joinads.me`) em vez do GAM:
+
+| Campo             | Tipo        | Descricao                                                                                                      |
+| ----------------- | ----------- | -------------------------------------------------------------------------------------------------------------- |
+| `source`          | `str`       | `"gam"` (default, quando ausente) ou `"joinads_api"`                                                           |
+| `joinads_network` | `str`       | So ficam as linhas da API com `network` igual a este valor (evita contar duas vezes dominios de outras networks) |
+| `domains`         | `list[str]` | Opcional. Allowlist de dominios (exata, sem diferenciar maiusculas, tolera `www.`); um request por dia e dominio. Sem ela, um request por dia e o escopo e o do token: dominios do usuario e dos usuarios filhos no office |
+| `revenue_field`   | `str`       | `"revenue"` (bruto) ou `"revenue_client"` (liquido do revshare); no UTM vira `earnings` / `earnings_client`    |
+
+Alternativa via GAM: com `parent_network_code` (e sem `source`), o relatorio roda na network pai com a dimensao `CHILD_NETWORK_CODE` e so as linhas da filha (`network_code`) sao mantidas; `source`, `joinads_network` e `revenue_field` nao se aplicam. Se `source: "joinads_api"` e `parent_network_code` aparecerem juntos, o pai e ignorado.
+
+Os dados sao sempre gravados com o `network_code` da entrada. Com `source: "joinads_api"` o GAM nao e chamado; sem `JOINADS_API_TOKEN` a execucao termina como `auth_error`, sem nenhuma chamada HTTP.
+
+O relatorio UTM depende de a API do office aceitar o parametro `network` no `key-value` (a network e filtrada no servidor); habilite a entrada so apos esse deploy.
+
+Impressoes e cliques vindos da API sao os mesmos do GAM. A receita chega arredondada em centavos por linha na origem (dia, ad unit e pais), entao o total pode ficar alguns centavos abaixo do que o GAM daria para o mesmo periodo, principalmente no UTM.
 
 Funcoes disponiveis:
 
